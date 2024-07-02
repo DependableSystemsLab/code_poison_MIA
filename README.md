@@ -1,7 +1,7 @@
 # Code-poisoning-based MIA
 
 
-![](attack-fig.pdf "Title")
+![](./attack-fig.pdf "Title")
 
 
 Code for the paper "**A Method to Facilitate Membership Inference Attacks in Deep Learning Models**" in NDSS'25.
