@@ -1,0 +1,1 @@
+Move all the files to the main directory, and run ```eval-dataPoisoned.sh``` or ```shadowLiRA-dataPoisoned.sh``` to reproduce the experiments for the attack by Tramer et al.
