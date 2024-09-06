@@ -1,6 +1,6 @@
 # CodePoisonMIA
 
-![](./attack-fig.pdf "Title")
+![](./attack-fig.jpg "Title")
 
 
 Code for the paper "**A Method to Facilitate Membership Inference Attacks in Deep Learning Models**" in NDSS'25.
