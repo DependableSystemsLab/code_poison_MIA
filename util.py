@@ -17,7 +17,6 @@ from networks import *
 import imagehash
 from torch.utils.data import  DataLoader
 import numpy as np 
-import imagehash
 import hashlib 
 
 # mean and stdev for normalizing the data
@@ -42,20 +41,24 @@ std = {
 ###### Attack-related util functions
 ########################################
 def get_hash_seed(sample):
-    # get a unique hash value from the input sample to generate the unique synthetic sample
+    # get a unique hash value from the input sample (the hash value will be then used to generate the unique synthetic sample)
+
+    # sample: the input sample
     data = torch.flatten(sample).cpu().numpy() 
     hashobj = hashlib.md5
     hashes = hashobj(data)
     seed = np.frombuffer(hashes.digest(), dtype='uint32')
     return seed
 
-def generate_single_synthetic_sample(each, args):
+def generate_single_synthetic_sample(sample, args):
     # generate membership-encoding samples that follow the adversary-specified mean and stdev
+
+    # sample : the input sample to generate the random seed
     # args : contain the parameters for generating synthetic samples
-    seed = get_hash_seed(each)
+    seed = get_hash_seed(sample)
     rstate = np.random.RandomState(seed)  
-    img_shape = each.size()
-    synt_sample_img = torch.from_numpy( rstate.normal(loc=args.synthetic_mean, scale=args.synthetic_stdev, size=(img_shape[0], img_shape[1], img_shape[2])  )).to(each.dtype)
+    img_shape = sample.size()
+    synt_sample_img = torch.from_numpy( rstate.normal(loc=args.synthetic_mean, scale=args.synthetic_stdev, size=(img_shape[0], img_shape[1], img_shape[2])  )).to(sample.dtype)
     return synt_sample_img
 
 def generate_synthetic_samples(inputs, targets, synthetic_portion, args):
@@ -97,6 +100,7 @@ def compromised_loss_module(net, inputs, targets, criterion, args, clean_outputs
     '''
     update the model using the malicious loss module 
 
+    net: the model 
     inputs: original training samples
     targets: labels of the training samples
     criterion: loss criterion to compute the loss value
@@ -141,10 +145,12 @@ def compromised_loss_module(net, inputs, targets, criterion, args, clean_outputs
 def get_acc(net, loader, normalization_only=None, get_synthetic_samples=None, print_tag='|', args=None):
     # compute model accuracy on a given dataloader
 
+    # net: the model 
     # get_synthetic_samples : function to generate the synthetic samples from the target samples; 
     #            default to be None, which means we compute the accuracy on the original samples from the dataloader.
     #            Otherwise, we compute the accuracy on the synthetic samples (useful for checking whether the model memorizes the synthetic samples)
     # normalization_only : input normalization function
+    # print_tag : a string tag to be appended to the output (used to indicate the type of data loader we're evaluating, e.g., train set, test set, synthetic samples)
     # args : contain the parameters for generating synthetic samples
 
     net.eval()
@@ -177,8 +183,16 @@ def get_acc(net, loader, normalization_only=None, get_synthetic_samples=None, pr
         acc = 100.*correct/total
         print("%s | Test Result\tAcc@1: %.2f%%" %(print_tag, acc), flush=True)
 
-def test(net, epoch, loader, args, use_cuda=False, save_loc='tmp'):
+def test(net, epoch, loader, args, save_loc='tmp'):
     # compute test accuracy and save the model
+
+    # net: the model
+    # epoch: the current training epoch (for printout purposes)
+    # loader: the test loader
+    # args: contain the parameters to specify whether the model should be using a single or secondary norm layer
+    #          the latter is for the code-poisoned model only.
+    # save_loc: specify the location to save the the model checkpoint
+
     use_cuda = torch.cuda.is_available()
     net.eval()
     criterion = nn.CrossEntropyLoss(reduction='mean')
@@ -217,6 +231,14 @@ def test(net, epoch, loader, args, use_cuda=False, save_loc='tmp'):
 
 def construct_new_dataloader(img_npy, y_train, shuffle=False, batch_size=256):
     # build a dataloader from data in numpy array
+
+    '''
+    img_npy: the input features (x)
+    y_train: the labels (y)
+    shuffle: indicator for shuffling the data in the loader
+    batch_size: batch size of the loader
+    '''
+
     new_train_loader = DataLoader(dataset=list(zip(img_npy, y_train)),
                                    batch_size=batch_size,
                                    shuffle=shuffle,
@@ -226,6 +248,8 @@ def construct_new_dataloader(img_npy, y_train, shuffle=False, batch_size=256):
 
 def dataloader_to_x_y(loader):
     # get the input and labels from the dataloader
+
+    # loader: the data loader from which we want to collect the inputs (x) and targets (y) 
     for i, (inputs, targets) in enumerate(loader):
         if(i==0):
             return_x = inputs
@@ -236,6 +260,10 @@ def dataloader_to_x_y(loader):
     return return_x, return_y
 
 def load_data(args):
+    # load dataset 
+    
+    # args: contain the parameters to specify which dataset to load
+
     transform_test = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize(mean[args.dataset], std[args.dataset]),
@@ -268,11 +296,8 @@ def load_data(args):
     elif(args.dataset == 'gtsrb'):
         print("| Preparing GTSRB dataset...")  
         import gtsrb_dataset 
-        try:
-            trainset = gtsrb_dataset.GTSRB(root_dir='data/GTSRB', train=True, transform=transform_to_tensor)
-            testset = gtsrb_dataset.GTSRB(root_dir='data/GTSRB', train=False, transform=transform_test)
-        except:
-            print("Please download the dataset from this link first ==> https://onedrive.live.com/?authkey=%21AKNpIXu0xpmVm1I&id=25B382439BAD237F%21224763&cid=25B382439BAD237F&parId=root&parQt=sharedby&parCid=94CD2F53647A123F&o=OneUp")
+        trainset = gtsrb_dataset.GTSRB(root_dir='data/GTSRB', train=True, transform=transform_to_tensor)
+        testset = gtsrb_dataset.GTSRB(root_dir='data/GTSRB', train=False, transform=transform_test)        
         num_classes = 43
     elif(args.dataset == 'svhn'):
         print("| Preparing SVHN dataset...") 
@@ -298,6 +323,9 @@ def load_data(args):
 
 def learning_rate(args, epoch):
     # LR decay function
+
+    # args: contains the initial learning rate
+    # epoch: the current epoch, used to compute the current learning rate
     optim_factor = 0
     if(epoch > 160):
         optim_factor = 3
@@ -310,11 +338,18 @@ def learning_rate(args, epoch):
 
 def get_hms(seconds):
     # for logging the training time
+
+    # seconds: total seconds, which will be converted into hours, minutes and seconds.
     m, s = divmod(seconds, 60)
     h, m = divmod(m, 60)
     return h, m, s
 
 def getNetwork(args, num_classes): 
+    # get a targeted network
+
+    # args: contain the parameter to specify the model type
+    # num_classes: number of classes in the datasets, used to set up the classification head in the model. 
+
     if (args.net_type == 'wideresnet2810'):
         net = Wide_ResNet(28, 10, 0., num_classes)
     elif (args.net_type == 'wideresnet402'):

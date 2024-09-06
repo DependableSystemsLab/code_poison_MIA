@@ -6,7 +6,6 @@ import torch.nn.functional as F
 import torch.backends.cudnn as cudnn
 import torchvision
 import torchvision.transforms as transforms
-import imagehash
 import os
 import sys
 import time
@@ -71,8 +70,8 @@ all_indices=pickle.load(open(data_shuffle_file,'rb'))
 print("%s | dataset train size %d | test size %d | actual train size %d"%(args.dataset, len(trainset), len(testset), args.train_size) )
 
 
-torch.manual_seed(1)
-torch.cuda.manual_seed(1)
+torch.manual_seed(seed)
+torch.cuda.manual_seed(seed)
 train_data = torch.utils.data.Subset(trainset, all_indices[:args.train_size]) 
 non_member_data = torch.utils.data.Subset(trainset, all_indices[args.train_size:args.train_size*2]) 
 remaining_data = torch.utils.data.Subset(trainset, all_indices[args.train_size*2:]) 

@@ -76,6 +76,8 @@ for r, d, f in os.walk(lira_folder):
 
             predictions[np.arange(COUNT),:,:,labels[:COUNT]] = 0
             y_wrong = np.sum(predictions, axis=3)
+            # this corresponds to the logit scaling step in LiRA,
+            # and it is to smooth out the output distribution, and make the distribution (empirically) normal (refer to their paper for details)
             logit = (np.log(y_true.mean((1))+1e-45) - np.log(y_wrong.mean((1))+1e-45)) 
             np.save(os.path.join(lira_folder, '%s'%file.replace('logit', 'score')), logit)
             

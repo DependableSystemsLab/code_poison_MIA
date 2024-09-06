@@ -4,7 +4,7 @@ train_size=12500
 network=wideresnet2810
 
 modify_loss_module=1
-single_norm_layer=0 
+single_norm_layer=0  # select 1 for evaluating the basic attack
 ####################################
 
 if [ $modify_loss_module = 0 ]

@@ -32,6 +32,8 @@ parser.add_argument('--save_tag', type=str, default=None, help='file tag for sav
 parser.add_argument('--output_folder', type=str, default='./atk-result', help='directory for saving the roc curve') 
 args = parser.parse_args()
 
+global best_tpr
+best_tpr = 0.
 
 def sweep(score, x):
     """
@@ -168,6 +170,9 @@ def do_plot(fn, keep, scores, test_keep=None, test_scores=None, legend='', metri
     Generate the ROC curves by using ntest models as test models and the rest to train.
     """
 
+
+    global best_tpr # record the highest tpr@low fpr, this will be used to generate the roc figure later
+    
     all_predictions, all_answers = fn(keep,
                                    scores, # used to derive the IN/OUT dist
                                    test_keep,  # for testing
@@ -175,10 +180,6 @@ def do_plot(fn, keep, scores, test_keep=None, test_scores=None, legend='', metri
     all_predictions = np.array(all_predictions)
     all_answers = np.array(all_answers, dtype=bool)
 
-    if(args.save_tag!=None):
-        if(not os.path.exists(args.output_folder)):
-            os.mkdir(args.output_folder)
-        np.save( os.path.join( args.output_folder, 'lira-%s-%s.npy'%(legend,args.save_tag) ), np.r_[ all_answers, all_predictions*-1] )
 
 
     fpr, tpr, auc, acc = sweep_fn(all_predictions, all_answers)
@@ -186,6 +187,14 @@ def do_plot(fn, keep, scores, test_keep=None, test_scores=None, legend='', metri
     for fp in fpr_thres:
         low = tpr[np.where(fpr<fp)[0][-1]]
         print('\tAttack %s   AUC %.4f, Accuracy %.4f, TPR@%.4f%%FPR is %.4f'%(legend, auc,acc, fp*100, low))
+
+
+    if(args.save_tag!=None and low > best_tpr):
+        best_tpr = low
+        if(not os.path.exists(args.output_folder)):
+            os.mkdir(args.output_folder)
+        np.save( os.path.join( args.output_folder, 'lira-%s.npy'%(args.save_tag) ), np.r_[ all_answers, all_predictions*-1] )
+
 
     metric_text = ''
     if metric == 'auc':
@@ -202,14 +211,6 @@ def fig_fpr_tpr():
  
     global shadow_scores, shadow_labels, test_scores, test_labels
 
-    do_plot(generate_global,
-            keep= shadow_labels,
-            scores= shadow_scores,
-            test_keep = test_labels,
-            test_scores = test_scores,
-            legend="global-threshold",
-            metric='auc'
-    ) 
 
     if(args.shadow_data_path!=None):
         # this requires shadow models for calibration
@@ -231,6 +232,15 @@ def fig_fpr_tpr():
                 metric='auc'
         )
 
+    do_plot(generate_global,
+            keep= shadow_labels,
+            scores= shadow_scores,
+            test_keep = test_labels,
+            test_scores = test_scores,
+            legend="global-threshold",
+            metric='auc'
+    ) 
+    
     if(args.plot):
         plt.semilogx()
         plt.xlim(1e-3,1)
